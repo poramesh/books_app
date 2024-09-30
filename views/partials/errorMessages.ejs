@@ -1,0 +1,13 @@
+<% if (typeof errorMessage !== 'undefined' && errorMessage != null) { %>
+    <%= errorMessage %>
+<% } %>
+
+
+
+<!--
+locals.errorMessage!=null
+
+locals refers to an object that contains local variables accessible to the view templates when rendering a response. 
+These local variables are defined in your route handlers when you call res.render() and can be used within your EJS templates.
+
+-->
