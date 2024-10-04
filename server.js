@@ -19,7 +19,7 @@ if (process.env.NODE_ENV !== 'production') {
   app.use(expressLayouts)
   app.use(express.static('public'))
   //app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }))
-  app.use(express.urlencoded({limit:'10mb', extended: false}))
+  app.use(express.urlencoded({limit: '10mb', extended: false}))
 
   const mongoose = require('mongoose')
   mongoose.connect(process.env.DATABASE_URL)
