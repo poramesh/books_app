@@ -9,6 +9,32 @@ const imageMimeTypes = ['image/jpeg', 'image/png', 'images/gif']
 
 router.get('/', async (req, res) => {
     let query = Book.find()
+
+    /***
+     * 
+     * Book.find({title: new RegExp(req.query.title,'i')})
+     * but we are gonna do it Book.find() 
+     * Book.find({ title: new RegExp(req.query.title, 'i') });
+But this approach is less flexible if you need to add additional filters dynamically.
+
+you can notice how we defined query once and use it to exec at once. 
+
+
+{
+  "title": { "$regex": "exampleTitle", "$options": "i" },
+  "publishDate": { "$lte": "2023-12-31", "$gte": "2022-01-01" }
+}
+
+.exec() triggers the execution of the query.
+The final query object, with all accumulated filters, is sent to MongoDB for processing.
+
+query = query.regex('title', ...).lte('publishDate', ...).gte('publishDate', ...);
+
+Using .exec() is considered a good practice because it clearly separates the query-building phase from the query-execution phase
+
+
+     * 
+     */
     if (req.query.title != null && req.query.title != '') {
       query = query.regex('title', new RegExp(req.query.title, 'i'))
     }
@@ -35,7 +61,14 @@ router.get('/new', async (req, res) => {
 
 
 router.post('/', async (req,res) =>{
-  console.log(req.body)
+  console.log("req.body",req.body)
+/*   [Object: null prototype] {
+    title: 'k',
+    author: '66fae312ec27e2dbb1ec22d1',
+    publishDate: '2024-11-14',
+    pageCount: '9',
+    cover: '{"id":"dgr8uejmj","name":"Screenshot (57).png","type":"image/png","size":1017852,"metadata":{"resize":{"mode":"cover","upscale":true,"size":{"width":100,"height":150}}},"data":"iVBORw0K....1347797987986987315 more characters"    description: '999999999999999999999999999999iloveamma'
+*/
     const book = new Book({
       title: req.body.title,
       author: req.body.author,
@@ -48,38 +81,127 @@ router.post('/', async (req,res) =>{
 
     try{
         const newBook = await book.save()
-        res.redirect('books')
-    }catch{
+        console.log("newboook", newBook)
+        res.redirect(`books/${newBook.id}`)
+      }catch{
     renderNewPage(res,book,true)
     }
 })
 
  
-async function renderNewPage(res, book, hasError=false){
-    try{
-    const authors = await Author.find({})
-    const params ={
-        authors: authors,
-        book: book
-    }
-    if(hasError) params.errorMessage = 'error creating book'
-    res.render('books/new',params)
-    }
-    catch{
-     res.redirect('/books')
-    }
 
+
+// Show Book Route
+router.get('/:id', async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id)
+                           .populate('author')
+                           .exec()
+    res.render('books/show', { book: book })
+  } catch {
+    res.redirect('/')
+  }
+})
+// Edit Book Route
+router.get('/:id/edit', async (req, res) => {
+  try {
+    const book = await Book.findById(req.params.id)
+    renderEditPage(res, book)
+  } catch {
+    res.redirect('/')
+  }
+})
+
+
+
+
+// Update Book Route
+router.put('/:id', async (req, res) => {
+  let book
+  try {
+    book = await Book.findById(req.params.id)
+    book.title = req.body.title
+    book.author = req.body.author
+    book.publishDate = new Date(req.body.publishDate)
+    book.pageCount = req.body.pageCount
+    book.description = req.body.description
+    if (req.body.cover != null && req.body.cover !== '') {
+      saveCover(book, req.body.cover)
+    }
+    await book.save()
+    res.redirect(`/books/${book.id}`)
+  } catch {
+    if (book != null) {
+      renderEditPage(res, book, true)
+    } else {
+      redirect('/')
+    }
+  }
+})
+
+
+
+
+
+
+// Delete Book Page
+router.delete('/:id', async (req, res) => {
+  let book
+  try {
+    book = await Book.findById(req.params.id)
+    await book.remove()
+    res.redirect('/books')
+  } catch {
+    if (book != null) {
+      res.render('books/show', {
+        book: book,
+        errorMessage: 'Could not remove book'
+      })
+    } else {
+      res.redirect('/')
+    }
+  }
+})
+
+
+
+async function renderNewPage(res, book, hasError = false) {
+  renderFormPage(res, book, 'new', hasError)
 }
- 
+
+async function renderEditPage(res, book, hasError = false) {
+  renderFormPage(res, book, 'edit', hasError)
+}
+
+async function renderFormPage(res, book, form, hasError = false) {
+  try {
+    const authors = await Author.find({})
+    const params = {
+      authors: authors,
+      book: book
+    }
+    if (hasError) params.errorMessage = 'Error Creating Book'
+    res.render('books/new', params)
+    if (hasError) {
+      if (form === 'edit') {
+        params.errorMessage = 'Error Updating Book'
+      } else {
+        params.errorMessage = 'Error Creating Book'
+      }
+    }
+    res.render(`books/${form}`, params)
+  } catch {
+    res.redirect('/books')
+  }
+}
+
+
+
 function saveCover(book, coverEncoded) {
-  if (coverEncoded == null || coverEncoded == '') return
+  if (coverEncoded == null) return
   const cover = JSON.parse(coverEncoded)
   if (cover != null && imageMimeTypes.includes(cover.type)) {
     book.coverImage = new Buffer.from(cover.data, 'base64')
     book.coverImageType = cover.type
   }
 }
-
-module.exports = router
- 
- 

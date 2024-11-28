@@ -7,6 +7,7 @@ if (process.env.NODE_ENV !== 'production') {
   const app = express()
   const expressLayouts = require('express-ejs-layouts')
   //const bodyParser = require('body-parser')
+  const methodOverride = require('method-override')
   
   const indexRouter = require('./router/index')
   const authorRouter = require('./router/authors')
@@ -17,6 +18,7 @@ if (process.env.NODE_ENV !== 'production') {
   app.set('layout', 'layouts/layout') //by default it is layout.ejs in the view folder since its in layouts folder, we gotta specifically mention it.
 //You don’t need to add the .ejs extension because Express knows it’s using EJS as the view engine.
   app.use(expressLayouts)
+  app.use(methodOverride('_method'))
   app.use(express.static('public'))
   //app.use(bodyParser.urlencoded({ limit: '10mb', extended: false }))
   app.use(express.urlencoded({limit: '10mb', extended: false}))
